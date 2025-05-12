@@ -1,12 +1,30 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import React, { useEffect } from 'react';
+import Navbar from '@/components/Navbar';
+import Hero from '@/components/Hero';
+import AboutSection from '@/components/AboutSection';
+import FeaturesSection from '@/components/FeaturesSection';
+import LiveDemo from '@/components/LiveDemo';
+import PricingSection from '@/components/PricingSection';
+import Footer from '@/components/Footer';
+import CommandOrb from '@/components/CommandOrb';
 
 const Index = () => {
+  // Update the document title
+  useEffect(() => {
+    document.title = "Aurora Nexus | Instagram Automation";
+  }, []);
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+      <Navbar />
+      <Hero />
+      <AboutSection />
+      <LiveDemo />
+      <FeaturesSection />
+      <PricingSection />
+      <Footer />
+      <CommandOrb />
     </div>
   );
 };
