@@ -1,73 +1,152 @@
-# Welcome to your Lovable project
 
-## Project info
+# Aurora Nexus - Instagram Comment-to-DM Automation Bot
 
-**URL**: https://lovable.dev/projects/967c0d26-fb18-42ab-9ada-d0ddd0ad2884
+![Aurora Nexus Logo](https://via.placeholder.com/150x150/111/a855f7?text=Aurora)
 
-## How can I edit this code?
+## Overview
 
-There are several ways of editing your application.
+Aurora Nexus is an Instagram automation tool that monitors comments on a specified post and automatically sends direct messages to users based on keyword triggers. The system provides a beautiful dark-themed dashboard for monitoring activity, customizing message templates, and managing automation settings.
 
-**Use Lovable**
+## Features
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/967c0d26-fb18-42ab-9ada-d0ddd0ad2884) and start prompting.
+- **Comment Monitoring**: Automatically polls a specified Instagram post for new comments
+- **Keyword Triggers**: Sends DMs when comments contain specified keywords
+- **Custom Message Templates**: Create and manage multiple DM templates
+- **Real-time Dashboard**: Monitor comments, DMs, and system activity
+- **Manual Controls**: Send test DMs directly from the dashboard
+- **Secure Authentication**: Protected admin interface
+- **Responsive Design**: Works on desktop and mobile devices
 
-Changes made via Lovable will be committed automatically to this repo.
+## Technical Architecture
 
-**Use your preferred IDE**
+- **Frontend**: React with Tailwind CSS, deployed on Netlify 
+- **Backend**: Netlify Functions (Node.js 18.x) & Supabase (PostgreSQL)
+- **Scheduled Tasks**: Netlify Cron Functions (polling every 5 minutes)
+- **Instagram API**: Private API wrapper for direct message functionality
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Installation
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Prerequisites
 
-Follow these steps:
+- Node.js 18.x or higher
+- Netlify CLI for local development
+- Instagram account
+- Supabase account
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Setup Instructions
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+1. **Clone the repository**
 
-# Step 3: Install the necessary dependencies.
-npm i
+```bash
+git clone https://github.com/yourusername/aurora-nexus.git
+cd aurora-nexus
+```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+2. **Install dependencies**
+
+```bash
+npm install
+```
+
+3. **Set up environment variables**
+
+Create a `.env` file based on `.env.example`:
+
+```
+# Instagram Credentials
+IG_USERNAME=your_instagram_username
+IG_PASSWORD=your_instagram_password
+
+# Instagram Configuration
+POST_ID=target_post_id
+KEYWORD=comment_trigger_keyword
+PRESET_DM=Your automated response message here.
+
+# Supabase Configuration
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_KEY=your-anon-key
+```
+
+4. **Set up Supabase database tables**
+
+Create the following tables in your Supabase project:
+
+- `comments`: Store tracked Instagram comments
+- `logs`: System activity logging
+- `templates`: Message templates for DMs
+- `config`: System configuration settings
+
+5. **Run locally**
+
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Deployment
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Deploy to Netlify
 
-**Use GitHub Codespaces**
+1. Connect your GitHub repository to Netlify
+2. Configure build settings:
+   - Build command: `npm run build`
+   - Publish directory: `dist`
+   - Functions directory: `functions`
+3. Add all environment variables from your `.env` file
+4. Deploy the site
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Configure Scheduled Functions
 
-## What technologies are used for this project?
+Add the following to your `netlify.toml` file:
 
-This project is built with:
+```toml
+[functions."poll_comments"]
+schedule = "*/5 * * * *"
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+This configures the `poll_comments` function to run every 5 minutes.
 
-## How can I deploy this project?
+## Usage
 
-Simply open [Lovable](https://lovable.dev/projects/967c0d26-fb18-42ab-9ada-d0ddd0ad2884) and click on Share -> Publish.
+1. **Sign in** to the admin dashboard using your credentials
+2. **Monitor comments** on your specified Instagram post
+3. **Create message templates** for automatic responses
+4. **View activity logs** to track system performance
+5. **Send test DMs** to verify functionality
 
-## Can I connect a custom domain to my Lovable project?
+## Security Considerations
 
-Yes, you can!
+- **Instagram Rate Limits**: Be mindful of Instagram's rate limits to avoid account restrictions
+- **Password Storage**: Instagram credentials are stored as environment variables
+- **Authentication**: Admin dashboard is protected by email/password authentication
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Troubleshooting
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Common issues and solutions:
+
+- **Instagram Login Fails**: Check credentials and ensure 2FA is disabled or properly handled
+- **Comments Not Detected**: Verify POST_ID is correct and polling function is running
+- **DMs Not Sending**: Check Instagram account permissions and message rate limits
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgements
+
+- [Instagram Private API](https://github.com/dilame/instagram-private-api)
+- [Supabase](https://supabase.io)
+- [Netlify](https://netlify.com)
+- [React](https://reactjs.org)
+- [Tailwind CSS](https://tailwindcss.com)
+
+---
+
+Built with ❤️ using [Lovable](https://lovable.dev)

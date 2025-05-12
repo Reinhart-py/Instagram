@@ -1,0 +1,24 @@
+
+# Netlify configuration
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "functions"
+
+# Set up automatic polling for comments every 5 minutes
+[functions."poll_comments"]
+  schedule = "*/5 * * * *"
+
+# Environment configuration
+[build.environment]
+  NODE_VERSION = "18"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

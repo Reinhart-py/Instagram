@@ -1,154 +1,255 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { useNavigate } from 'react-router-dom';
+import { Send, UserCheck, MessageSquare } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const LiveDemo = () => {
-  const [hasTriggeredDemo, setHasTriggeredDemo] = useState(false);
-  const [commentSubmitted, setCommentSubmitted] = useState(false);
-  const [dmSent, setDmSent] = useState(false);
-  const sectionRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const [comment, setComment] = useState("");
+  const [username, setUsername] = useState("");
+  const [loading, setLoading] = useState(false);
+  const isLoggedIn = false; // Replace with actual auth check when implemented
   
-  const triggerDemo = () => {
-    if (hasTriggeredDemo) return;
-    
-    setHasTriggeredDemo(true);
-    setCommentSubmitted(true);
-    
-    toast("New comment detected", {
-      description: "Processing comment from @user_123",
-      duration: 3000,
-    });
-    
-    setTimeout(() => {
-      setDmSent(true);
-      toast("DM sent to @user_123", {
-        description: "Message delivered successfully",
-        duration: 3000,
-      });
-    }, 2000);
-  };
-  
-  useEffect(() => {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('opacity-100');
-          entry.target.classList.remove('opacity-0', 'translate-y-10');
-        }
-      });
-    }, { threshold: 0.1 });
-    
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
+  const simulateComment = async () => {
+    if (!comment.trim() || !username.trim()) {
+      toast.error("Please enter both a username and comment");
+      return;
     }
     
-    return () => {
-      if (sectionRef.current) {
-        observer.unobserve(sectionRef.current);
+    setLoading(true);
+    
+    try {
+      // Check if user is logged in for admin access
+      const { data: session } = await supabase.auth.getSession();
+      
+      if (session?.session) {
+        // If logged in, simulate through backend
+        // This would normally call your backend function
+        toast.success(`Comment simulation: @${username} said "${comment}"`);
+        setTimeout(() => {
+          if (comment.toLowerCase().includes('help')) {
+            toast.success(`DM sent to @${username}!`);
+          }
+        }, 1500);
+        
+      } else {
+        // If not logged in, just show UI simulation
+        toast.info("Sign in for full functionality");
+        toast.success(`Demo mode: @${username} said "${comment}"`);
+        
+        if (comment.toLowerCase().includes('help')) {
+          setTimeout(() => {
+            toast.success(`Demo: DM would be sent to @${username}`);
+          }, 1500);
+        } else {
+          setTimeout(() => {
+            toast.info(`Demo: No keyword match found in comment`);
+          }, 1500);
+        }
       }
-    };
-  }, []);
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleGetStarted = () => {
+    navigate('/login');
+  };
 
   return (
-    <div 
-      ref={sectionRef}
-      className="relative py-20 w-full overflow-hidden opacity-0 translate-y-10 transition-all duration-700 ease-out"
-    >
-      <div className="container px-4 md:px-6 mx-auto">
-        <h2 className="text-3xl md:text-5xl font-bold text-center mb-4 glow-effect">
-          See It In <span className="text-gradient">Action</span>
-        </h2>
-        <p className="text-lg text-center max-w-3xl mx-auto mb-16 text-gray-300">
-          Click 'Test Now' to simulate a new comment and watch the DM appear in your inbox.
-        </p>
+    <section id="demo" className="py-16 relative">
+      <div className="absolute inset-0 bg-hero-glow opacity-40 pointer-events-none"></div>
+      
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-10">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            See It In <span className="text-gradient">Action</span>
+          </h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Try our Instagram comment-to-DM automation with this interactive demo. When someone comments with the keyword "help", they'll instantly receive your preset DM.
+          </p>
+        </div>
         
         <div className="max-w-4xl mx-auto">
-          <div className="glass-panel rounded-2xl p-8 border-2 border-white/5">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Comment Section */}
-              <div className="space-y-4">
-                <div className="glass-panel p-4 rounded-xl">
-                  <h4 className="text-lg font-semibold mb-2 text-indigo-300">Instagram Comment</h4>
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center text-sm font-semibold">U</div>
-                    <div className="flex-1">
-                      <p className="font-medium">user_123</p>
-                      <p className={`text-gray-300 ${commentSubmitted ? 'opacity-100' : 'opacity-60'}`}>
-                        {commentSubmitted ? 
-                          "I'm interested in your automation tool! Can you send me pricing info?" : 
-                          "Type your comment here..."}
+          <Tabs defaultValue="demo" className="w-full">
+            <div className="flex justify-center mb-4">
+              <TabsList>
+                <TabsTrigger value="demo" className="gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Comment Demo
+                </TabsTrigger>
+                <TabsTrigger value="flow" className="gap-2">
+                  <Send className="h-4 w-4" />
+                  How It Works
+                </TabsTrigger>
+              </TabsList>
+            </div>
+            
+            {/* Comment Simulation Tab */}
+            <TabsContent value="demo">
+              <Card className="border border-border/50 shadow-lg bg-background/60 backdrop-blur-sm">
+                <CardContent className="pt-6">
+                  <div className="space-y-8">
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="flex-1 space-y-1.5">
+                        <label htmlFor="username" className="text-sm font-medium">
+                          Instagram Username
+                        </label>
+                        <div className="relative">
+                          <span className="absolute inset-y-0 left-0 flex items-center pl-3 opacity-50">
+                            @
+                          </span>
+                          <Input
+                            id="username"
+                            className="pl-6"
+                            placeholder="username"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex-1 space-y-1.5">
+                        <label htmlFor="comment" className="text-sm font-medium">
+                          Comment (try including "help")
+                        </label>
+                        <Input
+                          id="comment"
+                          placeholder="I need help with this!"
+                          value={comment}
+                          onChange={(e) => setComment(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col md:flex-row gap-4 items-center">
+                      <Button
+                        onClick={simulateComment}
+                        disabled={loading}
+                        className="w-full md:w-auto"
+                      >
+                        {loading ? "Processing..." : "Simulate Comment"}
+                      </Button>
+                      
+                      <p className="text-sm text-muted-foreground">
+                        This demo shows how comments with the keyword "help" trigger automatic DMs.
                       </p>
-                      <div className="flex items-center mt-2 text-sm text-gray-400 gap-3">
-                        <span>{commentSubmitted ? "Just now" : "Waiting for comment..."}</span>
-                        {commentSubmitted && <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>}
+                    </div>
+                    
+                    <div className="flex justify-center pt-4">
+                      <Button
+                        onClick={handleGetStarted}
+                        size="lg"
+                        className="gap-2"
+                      >
+                        <UserCheck className="h-5 w-5" />
+                        Access Full Dashboard
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            {/* Flow Animation Tab */}
+            <TabsContent value="flow" className="relative overflow-hidden">
+              <Card className="border border-border/50 shadow-lg bg-background/60 backdrop-blur-sm">
+                <CardContent className="pt-6 pb-8">
+                  <div className="flex flex-col lg:flex-row gap-6">
+                    {/* Step 1 */}
+                    <div className="flex-1 flex flex-col items-center text-center">
+                      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4 border border-primary/20">
+                        <span className="font-bold text-primary">1</span>
+                      </div>
+                      <h3 className="text-lg font-medium mb-2">Comment Detection</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Our system monitors your chosen Instagram post for new comments every 5 minutes.
+                      </p>
+                      <div className="glass-panel p-4 rounded-lg w-full">
+                        <MessageSquare className="h-6 w-6 text-primary mb-2 mx-auto" />
+                        <p className="text-xs">
+                          "I really need help with this product!"
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Arrow 1 */}
+                    <div className="hidden lg:flex items-center justify-center">
+                      <svg width="40" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                    
+                    {/* Step 2 */}
+                    <div className="flex-1 flex flex-col items-center text-center">
+                      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4 border border-primary/20">
+                        <span className="font-bold text-primary">2</span>
+                      </div>
+                      <h3 className="text-lg font-medium mb-2">Keyword Matching</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        System checks if comment contains your specified keyword trigger (e.g., "help").
+                      </p>
+                      <div className="glass-panel p-4 rounded-lg w-full">
+                        <div className="text-xs">
+                          <span className="text-xs opacity-60">Matching for: </span>
+                          <span className="font-mono bg-primary/20 p-1 rounded text-primary">help</span>
+                          <div className="mt-2 font-mono text-green-400">✓ Match found!</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Arrow 2 */}
+                    <div className="hidden lg:flex items-center justify-center">
+                      <svg width="40" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                    
+                    {/* Step 3 */}
+                    <div className="flex-1 flex flex-col items-center text-center">
+                      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4 border border-primary/20">
+                        <span className="font-bold text-primary">3</span>
+                      </div>
+                      <h3 className="text-lg font-medium mb-2">Instant DM</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Your preset message is automatically sent as a DM to the commenter.
+                      </p>
+                      <div className="glass-panel p-4 rounded-lg w-full">
+                        <Send className="h-6 w-6 text-primary mb-2 mx-auto" />
+                        <p className="text-xs">
+                          "Thanks for your comment! Here's how I can help you..."
+                        </p>
                       </div>
                     </div>
                   </div>
-                </div>
-                
-                <div className="glass-panel p-4 rounded-xl bg-gradient-to-br from-indigo-900/20 to-purple-900/20">
-                  <h4 className="text-lg font-semibold mb-2 text-indigo-300">Aurora Detection System</h4>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-300">Keyword Detected:</span>
-                      <span className={`font-mono ${commentSubmitted ? 'text-green-400' : 'text-gray-500'}`}>
-                        {commentSubmitted ? '"pricing"' : 'Waiting...'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-300">Rule Matched:</span>
-                      <span className={`font-mono ${commentSubmitted ? 'text-green-400' : 'text-gray-500'}`}>
-                        {commentSubmitted ? 'PRICING_INFO' : 'Waiting...'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-300">Action:</span>
-                      <span className={`font-mono ${commentSubmitted ? 'text-green-400' : 'text-gray-500'}`}>
-                        {commentSubmitted ? 'SEND_PRICING_DM' : 'Waiting...'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* DM Section */}
-              <div className="glass-panel p-4 rounded-xl">
-                <h4 className="text-lg font-semibold mb-3 text-indigo-300">Direct Message</h4>
-                <div className="flex flex-col gap-3">
-                  <div className="w-full text-center text-sm text-gray-400">{dmSent ? 'Today at 12:01 PM' : 'Waiting for trigger...'}</div>
                   
-                  {dmSent && (
-                    <div className="ml-auto max-w-[80%] bg-primary/30 p-3 rounded-lg rounded-tr-none">
-                      <p className="text-white">
-                        Hi @user_123! Thanks for your interest in Aurora Nexus. Our pricing starts at $29/month for the basic plan, with premium features at $49/month. Would you like me to send you our full pricing breakdown?
-                      </p>
-                    </div>
-                  )}
-                  
-                  <div className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 transition-opacity duration-300 ${dmSent ? 'opacity-100' : 'opacity-0'}`}>
-                    <div className="text-xs text-green-400 flex items-center gap-1">
-                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                      Message sent automatically
-                    </div>
+                  {/* Get Started Button */}
+                  <div className="flex justify-center mt-10">
+                    <Button
+                      onClick={handleGetStarted}
+                      size="lg"
+                      variant="default"
+                      className="gap-2"
+                    >
+                      <UserCheck className="h-5 w-5" />
+                      Get Started Now
+                    </Button>
                   </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="mt-8 flex justify-center">
-              <Button
-                disabled={hasTriggeredDemo}
-                onClick={triggerDemo}
-                className="bg-primary hover:bg-primary/80 text-white px-6 py-2 rounded-full transition-all duration-300"
-              >
-                {hasTriggeredDemo ? 'Demo Completed' : 'Test Now'}
-              </Button>
-            </div>
-          </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
-    </div>
+    </section>
   );
 };
 
