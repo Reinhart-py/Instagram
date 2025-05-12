@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,33 +10,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertCircle, CheckCircle, RefreshCw, Send, Settings, MessageSquare, Clock, List, User, Search, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 
-// Define interfaces for our data types
-interface Comment {
-  id: string;
-  comment_id: string;
-  user: string;
-  text: string;
-  sent: boolean;
-  created_at: string;
-  post_id: string;
-}
-
-interface Log {
-  id: string;
-  event: string;
-  username: string;
-  details: string;
-  created_at: string;
-}
-
-interface Template {
-  id: string;
-  name: string;
-  content: string;
-  is_active: boolean;
-  created_at: string;
-}
+// Define interfaces for our data types using Supabase generated types
+type Comment = Database['public']['Tables']['comments']['Row'];
+type Log = Database['public']['Tables']['logs']['Row'];
+type Template = Database['public']['Tables']['templates']['Row'];
+type Config = Database['public']['Tables']['config']['Row'];
 
 const Dashboard: React.FC = () => {
   // State variables
@@ -99,7 +78,7 @@ const Dashboard: React.FC = () => {
       setIsLoading(true);
       
       // Save the template to Supabase
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('templates')
         .insert([{
           name: newTemplate.name,
@@ -128,10 +107,12 @@ const Dashboard: React.FC = () => {
       setIsLoading(true);
       
       // Update all templates to inactive
-      await supabase
+      const { error: updateAllError } = await supabase
         .from('templates')
         .update({ is_active: false })
         .neq('id', template.id);
+        
+      if (updateAllError) throw updateAllError;
         
       // Set the selected template to active
       const { error } = await supabase
@@ -276,7 +257,7 @@ const Dashboard: React.FC = () => {
       .channel('comments-channel')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, payload => {
         setComments(prev => [payload.new as Comment, ...prev]);
-        toast.info(`New comment detected from @${(payload.new as Comment).user}`);
+        toast.info(`New comment detected from @${(payload.new as Comment).username}`);
       })
       .subscribe();
       
@@ -459,11 +440,11 @@ const Dashboard: React.FC = () => {
                         <div className="flex justify-between items-start">
                           <div className="flex items-center gap-3">
                             <Avatar>
-                              <AvatarImage src={`https://avatar.vercel.sh/${comment.user}`} />
-                              <AvatarFallback>{comment.user.substring(0, 2).toUpperCase()}</AvatarFallback>
+                              <AvatarImage src={`https://avatar.vercel.sh/${comment.username}`} />
+                              <AvatarFallback>{comment.username.substring(0, 2).toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div>
-                              <div className="font-medium">@{comment.user}</div>
+                              <div className="font-medium">@{comment.username}</div>
                               <div className="text-sm text-muted-foreground">
                                 {formatRelativeTime(comment.created_at)}
                               </div>

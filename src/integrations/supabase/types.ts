@@ -9,7 +9,111 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      comments: {
+        Row: {
+          comment_id: string
+          created_at: string | null
+          id: string
+          post_id: string
+          sent: boolean | null
+          text: string
+          username: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string | null
+          id?: string
+          post_id: string
+          sent?: boolean | null
+          text: string
+          username: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string | null
+          id?: string
+          post_id?: string
+          sent?: boolean | null
+          text?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      config: {
+        Row: {
+          created_at: string | null
+          id: string
+          keyword: string | null
+          poll_frequency: string | null
+          post_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          keyword?: string | null
+          poll_frequency?: string | null
+          post_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          keyword?: string | null
+          poll_frequency?: string | null
+          post_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      logs: {
+        Row: {
+          created_at: string | null
+          details: string | null
+          event: string
+          id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          details?: string | null
+          event: string
+          id?: string
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          details?: string | null
+          event?: string
+          id?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      templates: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

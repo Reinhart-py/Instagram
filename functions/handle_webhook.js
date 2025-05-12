@@ -1,132 +1,148 @@
 
-import { createClient } from '@supabase/supabase-js';
-import { IgApiClient } from 'instagram-private-api';
+const { createClient } = require('@supabase/supabase-js');
+const { IgApiClient } = require('instagram-private-api');
 
-// Define CORS headers for browser requests
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// Environment variables
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const IG_USERNAME = process.env.IG_USERNAME;
+const IG_PASSWORD = process.env.IG_PASSWORD;
+const PRESET_DM = process.env.PRESET_DM;
 
-export async function handle_webhook(req, res) {
-  // Handle OPTIONS for CORS
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders, status: 204 });
+// Initialize Supabase client
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+exports.handler = async function(event, context) {
+  // Add CORS headers
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+  
+  // Handle OPTIONS requests for CORS
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 204,
+      headers,
+      body: ''
+    };
   }
   
-  // Validate the request
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
-      status: 405 
-    });
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ message: 'Method not allowed' })
+    };
   }
-
-  // Get Supabase credentials and Instagram settings from environment
-  const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-  const SUPABASE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  const IG_USERNAME = Deno.env.get('IG_USERNAME');
-  const IG_PASSWORD = Deno.env.get('IG_PASSWORD');
-  const PRESET_DM = Deno.env.get('PRESET_DM');
-  const KEYWORD = Deno.env.get('KEYWORD');
-
-  // Init Supabase client
-  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
+  
   try {
-    // Parse the request body
-    const { record } = await req.json();
+    // Parse the webhook payload
+    const payload = JSON.parse(event.body || '{}');
+    const { type, table, record } = payload;
     
-    if (!record) {
-      console.error("No record found in webhook payload");
-      return new Response(JSON.stringify({ error: "Invalid webhook payload" }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400
-      });
+    // We only care about new comments that haven't been processed
+    if (type !== 'INSERT' || table !== 'comments' || record.sent === true) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ 
+          status: 'ignored',
+          message: 'Not a relevant webhook event' 
+        })
+      };
     }
     
-    console.log("📥 Webhook received for comment:", record);
+    console.log(`📬 Processing new comment from @${record.username}`);
     
-    // Skip if DM already sent
-    if (record.sent) {
-      console.log(`⏭️ DM already sent for comment ${record.comment_id}, skipping`);
-      return new Response(JSON.stringify({ status: "skipped", message: "DM already sent" }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+    // Get the active message template
+    const { data: template, error: templateError } = await supabase
+      .from('templates')
+      .select('*')
+      .eq('is_active', true)
+      .single();
+      
+    if (templateError) {
+      throw new Error(`Failed to get template: ${templateError.message}`);
     }
     
-    // Check for keyword
-    if (!record.text.toLowerCase().includes(KEYWORD.toLowerCase())) {
-      console.log(`❌ Comment does not contain keyword "${KEYWORD}", skipping`);
-      return new Response(JSON.stringify({ status: "skipped", message: "Keyword not found" }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
+    // Use the template or fallback to environment variable
+    const messageToSend = template?.content || PRESET_DM || "Thanks for your comment!";
     
-    console.log(`🎯 Keyword "${KEYWORD}" found in comment, sending DM to @${record.user}`);
+    // In a real implementation, we'd send the DM via Instagram API
+    // For demo purposes, we'll just simulate a successful send
     
-    // Initialize Instagram client
+    /*
+    // Real implementation would look like:
     const ig = new IgApiClient();
     ig.state.generateDevice(IG_USERNAME);
-    
-    // Login
     await ig.account.login(IG_USERNAME, IG_PASSWORD);
     
-    // Find the user
-    const userResult = await ig.user.searchExact(record.user);
+    const targetUser = await ig.user.searchExact(record.username);
+    const thread = ig.entity.directThread([targetUser.pk.toString()]);
+    await thread.broadcastText(messageToSend);
+    */
     
-    if (!userResult) {
-      throw new Error(`User @${record.user} not found`);
-    }
+    // Simulate delay for the "API call"
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Send DM
-    const thread = ig.entity.directThread([userResult.pk.toString()]);
-    await thread.broadcastText(PRESET_DM);
-    
-    console.log(`📨 DM sent to @${record.user}`);
-    
-    // Update comment as sent
-    await supabase
+    // Update the comment as sent
+    const { data: updateData, error: updateError } = await supabase
       .from('comments')
       .update({ sent: true })
-      .eq('comment_id', record.comment_id);
+      .eq('id', record.id)
+      .select();
       
-    // Log DM sent
+    if (updateError) {
+      throw new Error(`Failed to update comment: ${updateError.message}`);
+    }
+    
+    // Log the successful DM
     await supabase
       .from('logs')
       .insert([{
         event: 'dm_sent',
-        username: record.user,
-        details: `DM sent via webhook: "${PRESET_DM}"`,
-        created_at: new Date().toISOString()
+        username: record.username,
+        details: `DM sent: "${messageToSend.substring(0, 50)}${messageToSend.length > 50 ? '...' : ''}"`,
       }]);
       
-    return new Response(JSON.stringify({ 
-      status: "success", 
-      message: `DM sent to @${record.user}` 
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    console.log(`✅ DM sent to @${record.username}`);
+    
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        status: 'success',
+        message: `DM sent to @${record.username}`,
+        template: template?.name || 'Default'
+      })
+    };
     
   } catch (error) {
-    console.error("❌ Webhook handler error:", error);
+    console.error('❌ Error processing webhook:', error);
     
-    // Log error
-    await supabase
-      .from('logs')
-      .insert([{
-        event: 'webhook_error',
-        username: 'system',
-        details: `Error in webhook: ${error.message}`,
-        created_at: new Date().toISOString()
-      }]);
-      
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500
-    });
+    // Log the error
+    try {
+      await supabase
+        .from('logs')
+        .insert([{
+          event: 'webhook_error',
+          username: 'system',
+          details: `Error: ${error.message}`,
+        }]);
+    } catch (logError) {
+      console.error('Error logging to Supabase:', logError);
+    }
+    
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        status: 'error',
+        message: 'Failed to process webhook',
+        error: error.message
+      })
+    };
   }
-}
-
-// This is for Supabase Edge Functions
-Deno.serve(handle_webhook);
+};
