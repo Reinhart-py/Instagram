@@ -14,6 +14,11 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Main function to send a DM
 async function sendDirectMessage(username, message) {
+  // Validate credentials
+  if (!IG_USERNAME || !IG_PASSWORD) {
+    throw new Error('Instagram credentials not configured');
+  }
+  
   console.log(`📱 Logging in as @${IG_USERNAME}...`);
   
   const ig = new IgApiClient();
@@ -32,7 +37,7 @@ async function sendDirectMessage(username, message) {
       throw new Error(`User @${username} not found`);
     }
     
-    console.log(`✅ Found user @${username} (${targetUser.full_name || 'No name'})!`);
+    console.log(`✅ Found user @${username}!`);
     
     // Send DM
     console.log(`📨 Sending DM: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"...`);
@@ -122,7 +127,7 @@ exports.handler = async function(event, context) {
       throw new Error(`Failed to get config: ${configError.message}`);
     }
     
-    const keyword = config?.keyword || KEYWORD || 'help';
+    const keyword = config?.keyword || process.env.KEYWORD || 'help';
     
     // Check if comment contains the keyword
     const hasKeyword = record.text.toLowerCase().includes((keyword || '').toLowerCase());
@@ -135,6 +140,25 @@ exports.handler = async function(event, context) {
         body: JSON.stringify({ 
           status: 'skipped',
           message: 'Comment does not contain the trigger keyword' 
+        })
+      };
+    }
+    
+    // Check if DM was already sent (double-check)
+    const { data: commentCheck } = await supabase
+      .from('comments')
+      .select('sent')
+      .eq('id', record.id)
+      .single();
+      
+    if (commentCheck && commentCheck.sent === true) {
+      console.log(`DM for comment ${record.id} was already sent, skipping`);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          status: 'skipped',
+          message: 'DM already sent for this comment'
         })
       };
     }

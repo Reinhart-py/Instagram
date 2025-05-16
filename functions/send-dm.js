@@ -85,8 +85,14 @@ exports.handler = async function(event, context) {
     
     console.log(`📨 Sending test DM to @${username}`);
     
+    // Validate Instagram credentials
+    if (!IG_USERNAME || !IG_PASSWORD) {
+      throw new Error('Instagram credentials are not configured');
+    }
+    
     // Get active template if no message is provided
-    if (!message) {
+    let messageToSend = message;
+    if (!messageToSend) {
       const { data: template, error: templateError } = await supabase
         .from('templates')
         .select('content')
@@ -94,7 +100,9 @@ exports.handler = async function(event, context) {
         .single();
         
       if (!templateError) {
-        message = template.content;
+        messageToSend = template.content;
+      } else {
+        messageToSend = PRESET_DM || "Thanks for your comment!";
       }
     }
     
@@ -104,6 +112,7 @@ exports.handler = async function(event, context) {
     
     // Login to Instagram
     await ig.account.login(IG_USERNAME, IG_PASSWORD);
+    console.log('✅ Successfully logged in to Instagram');
     
     // Find the user
     const searchResult = await ig.user.searchExact(username);
@@ -112,9 +121,11 @@ exports.handler = async function(event, context) {
       throw new Error(`User @${username} not found`);
     }
     
+    console.log(`✅ Found user @${username}`);
+    
     // Send DM
     const thread = ig.entity.directThread([searchResult.pk.toString()]);
-    await thread.broadcastText(message);
+    await thread.broadcastText(messageToSend);
     
     console.log(`✅ DM sent to @${username}`);
     
@@ -125,7 +136,6 @@ exports.handler = async function(event, context) {
         event: 'test_dm_sent',
         username,
         details: `Test DM sent to @${username}`,
-        created_at: new Date().toISOString()
       }]);
     
     return {
@@ -148,7 +158,6 @@ exports.handler = async function(event, context) {
           event: 'test_dm_error',
           username: body?.username || 'unknown',
           details: `Error sending test DM: ${error.message}`,
-          created_at: new Date().toISOString()
         }]);
     } catch (logError) {
       console.error('Error logging to Supabase:', logError);

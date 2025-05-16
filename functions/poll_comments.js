@@ -15,32 +15,71 @@ const KEYWORD = process.env.KEYWORD;
 // Initialize Supabase client
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Function to fetch comments from Instagram
-async function fetchInstagramComments(postId, accessToken) {
-  if (accessToken) {
-    try {
-      // Use Instagram Graph API if access token is available
-      const response = await fetch(`https://graph.instagram.com/${postId}/comments?access_token=${accessToken}`);
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(`Instagram API Error: ${data.error.message}`);
-      }
-      
-      return data.data.map(comment => ({
-        id: comment.id,
-        username: comment.username || 'unknown_user',
-        text: comment.text,
-        timestamp: comment.timestamp
-      }));
-    } catch (error) {
-      console.error('Error fetching comments via Graph API:', error);
-      // Fall back to mock data if Graph API fails
-      return getMockComments();
+// Function to fetch comments using private Instagram API
+async function fetchCommentsWithPrivateApi(postId) {
+  console.log('📱 Attempting to fetch comments using Private API...');
+  
+  if (!IG_USERNAME || !IG_PASSWORD) {
+    throw new Error('Instagram credentials not configured');
+  }
+  
+  const ig = new IgApiClient();
+  ig.state.generateDevice(IG_USERNAME);
+  
+  try {
+    // Login
+    await ig.account.login(IG_USERNAME, IG_PASSWORD);
+    console.log('✅ Successfully logged in!');
+    
+    // Get media ID (if numeric ID is provided)
+    let mediaId = postId;
+    if (!/^\d+_\d+$/.test(postId)) {
+      // If the ID format doesn't match Instagram's internal format, try to get it from the shortcode
+      const mediaInfo = await ig.media.info(postId);
+      mediaId = mediaInfo.id;
     }
-  } else {
-    console.log('No Instagram access token. Using mock data for development.');
-    return getMockComments();
+    
+    // Fetch comments
+    const commentsResponse = await ig.media.comments(mediaId);
+    console.log(`✅ Retrieved ${commentsResponse.comments?.length || 0} comments`);
+    
+    // Format comments to match our schema
+    return (commentsResponse.comments || []).map(comment => ({
+      id: comment.pk.toString(),
+      username: comment.user.username,
+      text: comment.text,
+      timestamp: new Date(comment.created_at_utc * 1000).toISOString()
+    }));
+  } catch (error) {
+    console.error('❌ Error using Private API:', error.message);
+    throw error;
+  }
+}
+
+// Function to fetch comments from Instagram Graph API
+async function fetchCommentsWithGraphApi(postId, accessToken) {
+  if (!accessToken) {
+    throw new Error('Instagram Graph API token not available');
+  }
+  
+  try {
+    console.log('📊 Fetching comments via Graph API...');
+    const response = await fetch(`https://graph.instagram.com/${postId}/comments?access_token=${accessToken}`);
+    const data = await response.json();
+    
+    if (data.error) {
+      throw new Error(`Instagram API Error: ${data.error.message}`);
+    }
+    
+    return data.data.map(comment => ({
+      id: comment.id,
+      username: comment.username || 'unknown_user',
+      text: comment.text,
+      timestamp: comment.timestamp
+    }));
+  } catch (error) {
+    console.error('❌ Error using Graph API:', error);
+    throw error;
   }
 }
 
@@ -66,6 +105,15 @@ exports.handler = async function(event, context) {
   console.log('📊 Instagram comment polling started');
   
   try {
+    // Log the poll event
+    await supabase
+      .from('logs')
+      .insert([{
+        event: 'poll_comments',
+        username: 'system',
+        details: 'Polling for new comments started',
+      }]);
+      
     // Get configuration from database
     const { data: config, error: configError } = await supabase
       .from('config')
@@ -86,10 +134,38 @@ exports.handler = async function(event, context) {
     
     console.log(`🔎 Fetching comments for post: ${postId}, keyword: "${keyword}"`);
     
-    // Fetch comments from Instagram
-    const comments = await fetchInstagramComments(postId, IG_ACCESS_TOKEN);
+    // Try to fetch comments using various methods
+    let comments = [];
+    let methodUsed = 'none';
     
-    console.log(`📝 Retrieved ${comments.length} comments to process`);
+    try {
+      // Try Private API first
+      comments = await fetchCommentsWithPrivateApi(postId);
+      methodUsed = 'private_api';
+    } catch (privateApiError) {
+      console.log('⚠️ Private API failed, trying Graph API...');
+      
+      try {
+        // Fall back to Graph API
+        if (IG_ACCESS_TOKEN) {
+          comments = await fetchCommentsWithGraphApi(postId, IG_ACCESS_TOKEN);
+          methodUsed = 'graph_api';
+        } else {
+          throw new Error('No Graph API token available');
+        }
+      } catch (graphApiError) {
+        console.log('⚠️ Both APIs failed, using mock data for development');
+        
+        // Fall back to mock data for development
+        comments = getMockComments();
+        methodUsed = 'mock';
+      }
+    }
+    
+    console.log(`📝 Retrieved ${comments.length} comments to process (method: ${methodUsed})`);
+    
+    let newComments = 0;
+    let keywordMatches = 0;
     
     // Process each comment
     for (const comment of comments) {
@@ -106,8 +182,13 @@ exports.handler = async function(event, context) {
         continue;
       }
       
+      newComments++;
+      
       // Check if the comment contains the keyword (case insensitive)
       const matchesKeyword = comment.text.toLowerCase().includes(keyword.toLowerCase());
+      if (matchesKeyword) {
+        keywordMatches++;
+      }
       
       // Insert the new comment into the database
       const { data: newComment, error: insertError } = await supabase
@@ -148,6 +229,9 @@ exports.handler = async function(event, context) {
       body: JSON.stringify({ 
         message: 'Instagram comments polled successfully',
         commentsProcessed: comments.length,
+        newComments,
+        keywordMatches,
+        method: methodUsed,
         timestamp: new Date().toISOString()
       })
     };
