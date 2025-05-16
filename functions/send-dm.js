@@ -12,6 +12,25 @@ const PRESET_DM = process.env.PRESET_DM;
 // Initialize Supabase client
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Helper function to rate limit requests
+const rateLimitState = {
+  lastRequest: {},
+  cooldownPeriod: 60000 // 1 minute cooldown
+};
+
+function checkRateLimit(username) {
+  const now = Date.now();
+  const lastReq = rateLimitState.lastRequest[username] || 0;
+  
+  if (now - lastReq < rateLimitState.cooldownPeriod) {
+    const waitTime = Math.ceil((rateLimitState.cooldownPeriod - (now - lastReq)) / 1000);
+    throw new Error(`Rate limited: Please wait ${waitTime} seconds before sending another DM to this user`);
+  }
+  
+  rateLimitState.lastRequest[username] = now;
+  return true;
+}
+
 exports.handler = async function(event, context) {
   // Add CORS headers
   const headers = {
@@ -50,7 +69,34 @@ exports.handler = async function(event, context) {
       };
     }
     
+    // Apply rate limiting
+    try {
+      checkRateLimit(username);
+    } catch (rateLimitError) {
+      return {
+        statusCode: 429,
+        headers,
+        body: JSON.stringify({ 
+          message: rateLimitError.message,
+          retryAfter: Math.ceil(rateLimitState.cooldownPeriod / 1000)
+        })
+      };
+    }
+    
     console.log(`📨 Sending test DM to @${username}`);
+    
+    // Get active template if no message is provided
+    if (!message) {
+      const { data: template, error: templateError } = await supabase
+        .from('templates')
+        .select('content')
+        .eq('is_active', true)
+        .single();
+        
+      if (!templateError) {
+        message = template.content;
+      }
+    }
     
     // Initialize Instagram client
     const ig = new IgApiClient();

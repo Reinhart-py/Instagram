@@ -1,1 +1,33 @@
+
 project_id = "fyvcabctxplmkesocbvz"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage"]
+
+[db]
+port = 54322
+shadow_port = 54320
+
+[realtime]
+enabled = true
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
+port = 54323
+
+[studio]
+enabled = true
+port = 54324
+
+[inbucket]
+enabled = true
+port = 54325
+
+[functions]
+[functions.webhook_handler]
+verify_jwt = false

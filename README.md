@@ -1,152 +1,106 @@
 
-# Aurora Nexus - Instagram Comment-to-DM Automation Bot
+# Instagram Comment-to-DM Automation Bot
 
-![Aurora Nexus Logo](https://via.placeholder.com/150x150/111/a855f7?text=Aurora)
-
-## Overview
-
-Aurora Nexus is an Instagram automation tool that monitors comments on a specified post and automatically sends direct messages to users based on keyword triggers. The system provides a beautiful dark-themed dashboard for monitoring activity, customizing message templates, and managing automation settings.
+This system automatically sends direct messages to users who comment on specific Instagram posts containing certain keywords. The app runs on a 5-minute polling cycle, continuously monitoring for new comments even when the dashboard isn't open.
 
 ## Features
 
-- **Comment Monitoring**: Automatically polls a specified Instagram post for new comments
-- **Keyword Triggers**: Sends DMs when comments contain specified keywords
-- **Custom Message Templates**: Create and manage multiple DM templates
-- **Real-time Dashboard**: Monitor comments, DMs, and system activity
-- **Manual Controls**: Send test DMs directly from the dashboard
-- **Secure Authentication**: Protected admin interface
-- **Responsive Design**: Works on desktop and mobile devices
+- **Automatic DM Sending**: When a user comments with specific keywords, they automatically receive a preset DM
+- **Manual Trigger**: Send test DMs directly from the admin dashboard
+- **Custom Message Templates**: Create and manage multiple message templates
+- **Comment Tracking**: Monitor all comments on target posts
+- **Activity Logs**: Keep records of all system activity
+- **Scheduled Polling**: Checks for new comments every 5 minutes
 
-## Technical Architecture
-
-- **Frontend**: React with Tailwind CSS, deployed on Netlify 
-- **Backend**: Netlify Functions (Node.js 18.x) & Supabase (PostgreSQL)
-- **Scheduled Tasks**: Netlify Cron Functions (polling every 5 minutes)
-- **Instagram API**: Private API wrapper for direct message functionality
-
-## Installation
+## Setup Instructions
 
 ### Prerequisites
 
-- Node.js 18.x or higher
-- Netlify CLI for local development
-- Instagram account
-- Supabase account
+1. Instagram account with valid credentials
+2. Supabase account (free tier works)
+3. Netlify account for deployment
 
-### Setup Instructions
+### Local Development Setup
 
-1. **Clone the repository**
+1. Clone the repository
+   ```bash
+   git clone https://github.com/yourusername/instagram-dm-bot.git
+   cd instagram-dm-bot
+   ```
 
-```bash
-git clone https://github.com/yourusername/aurora-nexus.git
-cd aurora-nexus
-```
+2. Install dependencies
+   ```bash
+   npm install
+   ```
 
-2. **Install dependencies**
+3. Create a `.env` file in the root directory using the template from `.env.example`
+   ```
+   IG_USERNAME=your_instagram_username
+   IG_PASSWORD=your_instagram_password
+   POST_ID=target_post_id
+   KEYWORD=comment_trigger_keyword
+   PRESET_DM=Your automated response message here.
+   SUPABASE_URL=your_supabase_project_url
+   SUPABASE_KEY=your_supabase_anon_key
+   ```
 
-```bash
-npm install
-```
+4. Create a Supabase project and set up the required tables:
+   - comments (id, comment_id, username, text, sent, post_id)
+   - logs (id, event, username, details, created_at)
+   - templates (id, name, content, is_active, created_at)
+   - config (id, keyword, post_id, poll_frequency, created_at, updated_at)
 
-3. **Set up environment variables**
+5. Run the development server
+   ```bash
+   npm run dev
+   ```
 
-Create a `.env` file based on `.env.example`:
+### Deploying to Netlify
 
-```
-# Instagram Credentials
-IG_USERNAME=your_instagram_username
-IG_PASSWORD=your_instagram_password
+1. Push your code to GitHub
 
-# Instagram Configuration
-POST_ID=target_post_id
-KEYWORD=comment_trigger_keyword
-PRESET_DM=Your automated response message here.
+2. Connect your GitHub repository to Netlify
 
-# Supabase Configuration
-SUPABASE_URL=https://your-project-id.supabase.co
-SUPABASE_KEY=your-anon-key
-```
-
-4. **Set up Supabase database tables**
-
-Create the following tables in your Supabase project:
-
-- `comments`: Store tracked Instagram comments
-- `logs`: System activity logging
-- `templates`: Message templates for DMs
-- `config`: System configuration settings
-
-5. **Run locally**
-
-```bash
-npm run dev
-```
-
-## Deployment
-
-### Deploy to Netlify
-
-1. Connect your GitHub repository to Netlify
-2. Configure build settings:
+3. Configure build settings in Netlify:
    - Build command: `npm run build`
    - Publish directory: `dist`
-   - Functions directory: `functions`
-3. Add all environment variables from your `.env` file
-4. Deploy the site
 
-### Configure Scheduled Functions
+4. Add environment variables in Netlify's environment settings (copy from your `.env` file)
 
-Add the following to your `netlify.toml` file:
+5. Enable Scheduled Functions in Netlify:
+   - The `netlify.toml` file already has the configuration for the 5-minute polling
 
-```toml
-[functions."poll_comments"]
-schedule = "*/5 * * * *"
-```
+### Configuration
 
-This configures the `poll_comments` function to run every 5 minutes.
+1. **Instagram Post ID**: The ID of the post you want to monitor for comments
+   - Find this in the URL of the post or use a third-party tool
+
+2. **Trigger Keyword**: The keyword that will trigger a DM when found in a comment
+   - Configure in the dashboard or through the `.env` file
+
+3. **Message Templates**: Create and manage templates through the dashboard
+   - Set one template as active to be used for automated DMs
 
 ## Usage
 
-1. **Sign in** to the admin dashboard using your credentials
-2. **Monitor comments** on your specified Instagram post
-3. **Create message templates** for automatic responses
-4. **View activity logs** to track system performance
-5. **Send test DMs** to verify functionality
+1. **Dashboard**: Access the admin dashboard to monitor activity and manage settings
+   
+2. **Automatic Mode**: The system will automatically poll for new comments every 5 minutes and send DMs when the keyword is detected
 
-## Security Considerations
-
-- **Instagram Rate Limits**: Be mindful of Instagram's rate limits to avoid account restrictions
-- **Password Storage**: Instagram credentials are stored as environment variables
-- **Authentication**: Admin dashboard is protected by email/password authentication
+3. **Manual Mode**: Use the "Send Test DM" button to manually trigger a DM to a specific user
 
 ## Troubleshooting
 
-Common issues and solutions:
+- **Instagram Login Issues**: Ensure your credentials are correct and your account doesn't have 2FA enabled
+- **Missing Comments**: Verify the correct POST_ID is configured
+- **Supabase Connection Errors**: Check your Supabase URL and key in the environment variables
 
-- **Instagram Login Fails**: Check credentials and ensure 2FA is disabled or properly handled
-- **Comments Not Detected**: Verify POST_ID is correct and polling function is running
-- **DMs Not Sending**: Check Instagram account permissions and message rate limits
+## Security Notes
 
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
+- Instagram credentials are stored in environment variables and should be kept secure
+- The system uses Row Level Security in Supabase for data protection
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT
 
-## Acknowledgements
-
-- [Instagram Private API](https://github.com/dilame/instagram-private-api)
-- [Supabase](https://supabase.io)
-- [Netlify](https://netlify.com)
-- [React](https://reactjs.org)
-- [Tailwind CSS](https://tailwindcss.com)
-
----
-
-Built with ❤️ using [Lovable](https://lovable.dev)

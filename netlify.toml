@@ -9,6 +9,10 @@
 [functions."poll_comments"]
   schedule = "*/5 * * * *"
 
+# Set up daily health check
+[functions."health-check"]
+  schedule = "0 */6 * * *"  # Every 6 hours
+
 # Environment configuration
 [build.environment]
   NODE_VERSION = "18"
@@ -22,3 +26,4 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
